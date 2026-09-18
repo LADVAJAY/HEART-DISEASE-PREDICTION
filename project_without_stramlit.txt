@@ -1,0 +1,658 @@
+
+# ============================================================
+# HEART DISEASE PREDICTION
+# Python for Data Science - BE05000231
+# ============================================================
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+
+
+# ============================================================
+# 1. LOAD DATASET
+# ============================================================
+
+try:
+    df = pd.read_csv("dataset.csv")
+
+except FileNotFoundError:
+    print("Error: dataset.csv file not found!")
+    print("Please keep dataset.csv in the same folder.")
+    exit()
+
+
+# ============================================================
+# 2. DATA CLEANING
+# ============================================================
+
+df = df.drop_duplicates()
+
+numeric_columns = df.select_dtypes(include=np.number).columns
+
+for column in numeric_columns:
+    df[column] = df[column].fillna(df[column].median())
+
+
+# ============================================================
+# 3. SEPARATE INPUT AND OUTPUT
+# ============================================================
+
+X = df.drop("target", axis=1)
+y = df["target"]
+
+
+# ============================================================
+# 4. SPLIT DATA
+# ============================================================
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.20,
+    random_state=42,
+    stratify=y
+)
+
+
+# ============================================================
+# 5. NORMALIZATION
+# ============================================================
+
+scaler = StandardScaler()
+
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+
+# ============================================================
+# 6. TRAIN MODEL
+# ============================================================
+
+model = LogisticRegression(max_iter=1000)
+
+model.fit(X_train_scaled, y_train)
+
+
+# ============================================================
+# 7. USER INPUT
+# ============================================================
+
+print("\n==============================================")
+print("          HEART DISEASE PREDICTION")
+print("==============================================")
+
+print("\nENTER PATIENT INFORMATION")
+print("----------------------------------------------")
+
+patient = []
+
+for column in X.columns:
+
+    while True:
+
+        try:
+
+            if column == "age":
+                print("Age = Patient age in years")
+
+            elif column == "sex":
+                print("Sex = 1 for Male, 0 for Female")
+
+            elif column == "cp":
+                print("Chest Pain Type = 0, 1, 2 or 3")
+
+            elif column == "trestbps":
+                print("Resting Blood Pressure = Example 120")
+
+            elif column == "chol":
+                print("Cholesterol = Example 200")
+
+            elif column == "fbs":
+                print("Fasting Blood Sugar = 1 or 0")
+
+            elif column == "restecg":
+                print("Resting ECG = 0, 1 or 2")
+
+            elif column == "thalach":
+                print("Maximum Heart Rate = Example 150")
+
+            elif column == "exang":
+                print("Exercise Induced Angina = 1 or 0")
+
+            elif column == "oldpeak":
+                print("ST Depression = Example 1.2")
+
+            elif column == "slope":
+                print("Slope = 0, 1 or 2")
+
+            elif column == "ca":
+                print("Number of Major Vessels = 0, 1, 2 or 3")
+
+            elif column == "thal":
+                print("Thal = 0, 1, 2 or 3")
+
+            value = float(input(f"Enter {column}: "))
+
+            patient.append(value)
+
+            print()
+
+            break
+
+        except ValueError:
+
+            print("Invalid input! Please enter a number.\n")
+
+
+# ============================================================
+# 8. CONVERT USER INPUT
+# ============================================================
+
+patient_array = np.array(patient).reshape(1, -1)
+
+
+# ============================================================
+# 9. NORMALIZE USER INPUT
+# ============================================================
+
+patient_scaled = scaler.transform(patient_array)
+
+
+# ============================================================
+# 10. PREDICTION
+# ============================================================
+
+prediction = model.predict(patient_scaled)
+
+probability = model.predict_proba(patient_scaled)
+
+no_disease_probability = probability[0][0] * 100
+disease_probability = probability[0][1] * 100
+
+
+# ============================================================
+# 11. PREDICTION RESULT
+# ============================================================
+
+print("\n==============================================")
+print("             PREDICTION RESULT")
+print("==============================================")
+
+if prediction[0] == 1:
+    print("Result: HEART DISEASE DETECTED")
+else:
+    print("Result: NO HEART DISEASE DETECTED")
+
+print("\nNo Disease Probability:",
+      round(no_disease_probability, 2), "%")
+
+print("Disease Probability:",
+      round(disease_probability, 2), "%")
+
+print("==============================================")
+
+
+# ============================================================
+# 12. CREATE PATIENT DATAFRAME
+# ============================================================
+
+patient_df = pd.DataFrame(
+    [patient],
+    columns=X.columns
+)
+
+
+# ============================================================
+# 13. CONFUSION MATRIX
+# ============================================================
+
+y_pred = model.predict(X_test_scaled)
+
+cm = pd.crosstab(
+    y_test,
+    y_pred
+)
+
+plt.figure(figsize=(7, 5))
+
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt="d",
+    cmap="Blues",
+    xticklabels=["No Disease", "Disease"],
+    yticklabels=["No Disease", "Disease"]
+)
+
+plt.title("Confusion Matrix")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+
+plt.tight_layout()
+plt.show()
+
+
+# ============================================================
+# 14. PATIENT INPUT VALUES
+# ============================================================
+
+selected_columns = [
+    "age",
+    "trestbps",
+    "chol",
+    "thalach",
+    "oldpeak"
+]
+
+available_columns = [
+    column for column in selected_columns
+    if column in X.columns
+]
+
+patient_values = [
+    patient_df[column].iloc[0]
+    for column in available_columns
+]
+
+
+plt.figure(figsize=(9, 5))
+
+bars = plt.bar(
+    available_columns,
+    patient_values
+)
+
+plt.title("Patient Input Values")
+plt.xlabel("Health Parameters")
+plt.ylabel("Patient Value")
+
+for bar, value in zip(bars, patient_values):
+
+    plt.text(
+        bar.get_x() + bar.get_width() / 2,
+        bar.get_height(),
+        f"{value:.1f}",
+        ha="center",
+        va="bottom"
+    )
+
+plt.tight_layout()
+plt.show()
+
+
+# ============================================================
+# 15. PATIENT VS DATASET AVERAGE
+# ============================================================
+
+average_values = [
+    df[column].mean()
+    for column in available_columns
+]
+
+x = np.arange(len(available_columns))
+
+width = 0.35
+
+plt.figure(figsize=(10, 5))
+
+patient_bars = plt.bar(
+    x - width / 2,
+    patient_values,
+    width,
+    label="Patient"
+)
+
+average_bars = plt.bar(
+    x + width / 2,
+    average_values,
+    width,
+    label="Dataset Average"
+)
+
+plt.xticks(
+    x,
+    available_columns
+)
+
+plt.ylabel("Value")
+plt.title("Patient Values vs Dataset Average")
+
+plt.legend()
+
+for bar, value in zip(patient_bars, patient_values):
+
+    plt.text(
+        bar.get_x() + bar.get_width() / 2,
+        bar.get_height(),
+        f"{value:.1f}",
+        ha="center",
+        va="bottom"
+    )
+
+for bar, value in zip(average_bars, average_values):
+
+    plt.text(
+        bar.get_x() + bar.get_width() / 2,
+        bar.get_height(),
+        f"{value:.1f}",
+        ha="center",
+        va="bottom"
+    )
+
+plt.tight_layout()
+plt.show()
+
+
+# ============================================================
+# 16. PATIENT AGE POSITION
+# ============================================================
+
+if "age" in X.columns:
+
+    patient_age = patient_df["age"].iloc[0]
+
+    plt.figure(figsize=(8, 5))
+
+    sns.histplot(
+        df["age"],
+        bins=10,
+        kde=True
+    )
+
+    plt.axvline(
+        patient_age,
+        linestyle="--",
+        linewidth=3,
+        label=f"Patient Age = {patient_age:.0f}"
+    )
+
+    plt.title("Patient Age Compared With Dataset")
+    plt.xlabel("Age")
+    plt.ylabel("Number of Patients")
+
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+# ============================================================
+# 17. PATIENT CHOLESTEROL POSITION
+# ============================================================
+
+if "chol" in X.columns:
+
+    patient_chol = patient_df["chol"].iloc[0]
+
+    plt.figure(figsize=(8, 5))
+
+    sns.histplot(
+        df["chol"],
+        bins=10,
+        kde=True
+    )
+
+    plt.axvline(
+        patient_chol,
+        linestyle="--",
+        linewidth=3,
+        label=f"Patient Cholesterol = {patient_chol:.0f}"
+    )
+
+    plt.title("Patient Cholesterol Compared With Dataset")
+    plt.xlabel("Cholesterol")
+    plt.ylabel("Number of Patients")
+
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+# ============================================================
+# 18. PATIENT BLOOD PRESSURE POSITION
+# ============================================================
+
+if "trestbps" in X.columns:
+
+    patient_bp = patient_df["trestbps"].iloc[0]
+
+    plt.figure(figsize=(8, 5))
+
+    sns.histplot(
+        df["trestbps"],
+        bins=10,
+        kde=True
+    )
+
+    plt.axvline(
+        patient_bp,
+        linestyle="--",
+        linewidth=3,
+        label=f"Patient BP = {patient_bp:.0f}"
+    )
+
+    plt.title("Patient Blood Pressure Compared With Dataset")
+    plt.xlabel("Resting Blood Pressure")
+    plt.ylabel("Number of Patients")
+
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+# ============================================================
+# 19. PATIENT CHEST PAIN INPUT
+# ============================================================
+
+if "cp" in X.columns:
+
+    patient_cp = patient_df["cp"].iloc[0]
+
+    cp_counts = df["cp"].value_counts().sort_index()
+
+    plt.figure(figsize=(8, 5))
+
+    bars = plt.bar(
+        cp_counts.index.astype(str),
+        cp_counts.values
+    )
+
+    plt.axvline(
+        list(cp_counts.index).index(patient_cp)
+        if patient_cp in cp_counts.index
+        else 0,
+        linestyle="--",
+        linewidth=3,
+        label=f"Patient CP = {patient_cp:.0f}"
+    )
+
+    plt.title("Chest Pain Type - Patient Input")
+    plt.xlabel("Chest Pain Type")
+    plt.ylabel("Number of Patients")
+
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+# ============================================================
+# 20. PATIENT AGE VS HEART RATE
+# ============================================================
+
+if "age" in X.columns and "thalach" in X.columns:
+
+    patient_age = patient_df["age"].iloc[0]
+    patient_thalach = patient_df["thalach"].iloc[0]
+
+    plt.figure(figsize=(8, 5))
+
+    sns.scatterplot(
+        data=df,
+        x="age",
+        y="thalach",
+        hue="target"
+    )
+
+    # Patient point
+    plt.scatter(
+        patient_age,
+        patient_thalach,
+        s=180,
+        marker="X",
+        label="Patient"
+    )
+
+    plt.title("Patient Age vs Maximum Heart Rate")
+    plt.xlabel("Age")
+    plt.ylabel("Maximum Heart Rate")
+
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+# ============================================================
+# 21. MODEL ACCURACY
+# ============================================================
+
+accuracy = model.score(
+    X_test_scaled,
+    y_test
+)
+
+plt.figure(figsize=(6, 5))
+
+plt.bar(
+    ["Accuracy"],
+    [accuracy * 100]
+)
+
+plt.ylim(0, 100)
+
+plt.ylabel("Accuracy (%)")
+plt.title("Logistic Regression Model Accuracy")
+
+plt.text(
+    0,
+    accuracy * 100 + 2,
+    f"{accuracy * 100:.2f}%",
+    ha="center"
+)
+
+plt.tight_layout()
+plt.show()
+
+
+# ============================================================
+# 22. PATIENT PREDICTION PROBABILITY
+# ============================================================
+
+probabilities = [
+    no_disease_probability,
+    disease_probability
+]
+
+plt.figure(figsize=(7, 5))
+
+bars = plt.bar(
+    ["No Disease", "Disease"],
+    probabilities
+)
+
+plt.ylabel("Probability (%)")
+plt.title("Patient Prediction Probability")
+
+plt.ylim(0, 100)
+
+for bar, value in zip(bars, probabilities):
+
+    plt.text(
+        bar.get_x() + bar.get_width() / 2,
+        value + 2,
+        f"{value:.2f}%",
+        ha="center"
+    )
+
+plt.tight_layout()
+plt.show()
+
+
+# ============================================================
+# 23. PATIENT CATEGORICAL FEATURES
+# ============================================================
+
+categorical_columns = [
+    "sex",
+    "cp",
+    "fbs",
+    "restecg",
+    "exang",
+    "slope",
+    "ca",
+    "thal"
+]
+
+available_categorical = [
+    column for column in categorical_columns
+    if column in X.columns
+]
+
+if len(available_categorical) > 0:
+
+    categorical_values = [
+        patient_df[column].iloc[0]
+        for column in available_categorical
+    ]
+
+    plt.figure(figsize=(10, 5))
+
+    bars = plt.bar(
+        available_categorical,
+        categorical_values
+    )
+
+    plt.title("Patient Categorical Feature Values")
+    plt.xlabel("Features")
+    plt.ylabel("Patient Input")
+
+    for bar, value in zip(bars, categorical_values):
+
+        plt.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            f"{value:.0f}",
+            ha="center",
+            va="bottom"
+        )
+
+    plt.tight_layout()
+    plt.show()
+
+
+# ============================================================
+# 24. PROJECT COMPLETED
+# ============================================================
+
+print("\n==============================================")
+print("              PROJECT COMPLETED")
+print("==============================================")
+
+print("Patient prediction completed successfully.")
+
+print("\nGraphs generated using patient input.")
+
+print("\nNote:")
+print("This project is for educational purposes only.")
+print("It should not be used as a medical diagnosis.")
+
+print("==============================================")
